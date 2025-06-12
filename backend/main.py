@@ -72,7 +72,7 @@ def add_furniture(furniture: FurnitureModel):
   except Exception as e:
     raise HTTPException(status_code=500, detail=f"Error adding furniture: {str(e)}")
   
-@app.get("/get-furniture}")
+@app.get("/get-furniture")
 def list_furniture():
   try: 
     furnitures = session.query(Furniture).order_by(Furniture.id.desc()).all()
