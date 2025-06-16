@@ -1,11 +1,18 @@
-from sqlalchemy import create_engine, Column, Integer, String, Double
+from sqlalchemy import create_engine, Column, Integer, String, Double, func
 from sqlalchemy.orm import sessionmaker, declarative_base
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 
 app = FastAPI()
+app.add_middleware(
+  CORSMiddleware,
+  allow_origins=["*"],    # Add your frontend URLs
+  allow_credentials=True, 
+  allow_methods=["*"],    # Allows all methods
+  allow_headers=["*"],    # Allows all headers
+)
 
 # Database URL (adjust username/password as needed)
 DB_USER = "postgres"
@@ -49,13 +56,20 @@ class FurnitureModel(BaseModel):
 
 @app.get("/")
 def read_root():
+  """
+  Root endpoint for the Furniture API.
+  """
   return {"message": "Welcome to the Furniture API"}
 
 @app.post("/furniture/")
 def add_furniture(furniture: FurnitureModel):
+  """
+  Adds a new furniture item to the database.
+  """
   try: 
     new_furniture = Furniture(
       style=furniture.style,
+      room=furniture.room,
       name=furniture.name,
       type=furniture.type,
       price=furniture.price,
@@ -64,6 +78,7 @@ def add_furniture(furniture: FurnitureModel):
     )
     session.add(new_furniture)
     session.commit()
+    session.refresh(new_furniture)
 
     return {
       "id": new_furniture.id,
@@ -71,25 +86,81 @@ def add_furniture(furniture: FurnitureModel):
     }
   except Exception as e:
     raise HTTPException(status_code=500, detail=f"Error adding furniture: {str(e)}")
-  
+
 @app.get("/get-furniture")
 def list_furniture():
+  """
+  Retrieves all furniture items from the database.
+  """
   try: 
-    furnitures = session.query(Furniture).order_by(Furniture.id.desc()).all()
-
+    # furnitures = session.query(Furniture).order_by(Furniture.id.desc()).all()
+    furnitures = session.query(Furniture).all()
     return furnitures
   except Exception as e:
-    raise HTTPException(status_code=500, detail=f"Error getting book: {str(e)}")
+    raise HTTPException(status_code=500, detail=f"Error getting furniture list: {str(e)}")
+
 
 @app.get("/get-furniture/{furniture_id}")  
 def list_furniture(furniture_id: int):
+  """
+  Retrives a single furniture item by its ID.
+  """
   try:
-    furniture = session.query(Furniture).filter_by(id=furniture_id).order_by(Furniture.id.desc()).first()
+    furniture = session.query(Furniture).filter_by(id=furniture_id).first()
     if not furniture:
-      return {"result": "no furniture found"}
+      raise HTTPException(status_code=404, detail="Furniture not found")
     return furniture
+  except HTTPException as e:
+    raise e
   except Exception as e:
     raise HTTPException(status_code=500, detail=f"Error getting furniture: {str(e)}")
+  
+@app.get("/furniture/filter")
+def filter_furniture(
+  style: Optional[str] = Query(None, description="Filter by furniture style"),
+  room: Optional[str] = Query(None, description="Filter by room type")
+):
+  """
+  Filters furniture items based on style and room
+  Usage:
+  /furniture/filter/?style=Scandinavian
+  /furniture/filter/?room=Bedroom
+  """
+
+  try:
+    query = session.query(Furniture)
+
+    if style:
+      query = query.filter(Furniture.style.ilike(f"%{style}%"))
+
+    if room:
+      query = query.filter(Furniture.room.ilike(f"%{room}%"))
+    
+    filtered_furniture = query.all()
+
+    if not filtered_furniture:
+      return {"message": "No furniture found matching the criteria."}
+      
+    return filtered_furniture  
+  except Exception as e:
+    raise HTTPException(status_code=500, detail=f"Error filtering str{e}")
+
+
+
+# Filter by Room type (E.g. Scandinavian, bedroom)
+# @app.get("/get-furniture/style/{style}")
+# def get_furniture_by_style(style: str):
+#   try:
+#     furnitures = session.query(Furniture).filter(
+#       Furniture.style.ilike(f"%{style}%")
+#     ).all()
+
+#     if not furnitures:
+#       return {"message": f"No furniture found with style: {style}", "data":[]}
+#   except Exception as e:
+#     raise HTTPException(status_code=500, detail=f"Error filtering by style: {str(e)}")
+
+
 
 
     
