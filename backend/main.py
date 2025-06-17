@@ -4,6 +4,8 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, List
+import os
+from dotenv import load_dotenv
 
 app = FastAPI()
 app.add_middleware(
@@ -14,11 +16,12 @@ app.add_middleware(
   allow_headers=["*"],    # Allows all headers
 )
 
+load_dotenv()
 # Database URL (adjust username/password as needed)
-DB_USER = "postgres"
-DB_PASSWORD = "password"
-DB_HOST = "localhost"
-DB_NAME = "furniture_db"
+DB_USER = os.getenv("DB_USER")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
+DB_HOST = os.getenv("DB_HOST")
+DB_NAME = os.getenv("DB_NAME")
 DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:5432/{DB_NAME}"
 
 # Set up SQLAlchemy Engine and Base
@@ -46,6 +49,7 @@ Base.metadata.create_all(engine)
 
 # Pydantic model for request body
 class FurnitureModel(BaseModel):
+  id: int 
   style: Optional[str] = None
   room: Optional[str] = None
   name : Optional[str] = None
@@ -68,6 +72,7 @@ def add_furniture(furniture: FurnitureModel):
   """
   try: 
     new_furniture = Furniture(
+      id=furniture.id,
       style=furniture.style,
       room=furniture.room,
       name=furniture.name,
@@ -85,6 +90,7 @@ def add_furniture(furniture: FurnitureModel):
       "data": new_furniture
     }
   except Exception as e:
+    session.rollback() # Rollback in case of error
     raise HTTPException(status_code=500, detail=f"Error adding furniture: {str(e)}")
 
 @app.get("/get-furniture")
@@ -99,6 +105,39 @@ def list_furniture():
   except Exception as e:
     raise HTTPException(status_code=500, detail=f"Error getting furniture list: {str(e)}")
 
+@app.get("/get-furniture/filter")
+def filter_furniture(
+  style: str = Query(None, description="Filter by furniture style"),
+  room: str = Query(None, description="Filter by room type")
+):
+  """
+  Filters furniture items based on style and room
+  Usage:
+  /furniture/filter/?style=Scandinavian
+  /furniture/filter/?room=Bedroom
+  """
+
+  try:
+    query = session.query(Furniture)
+
+    if style:
+      # query = query.filter(Furniture.style.ilike(f"%{style}%"))
+      query = query.filter(func.lower(Furniture.style) == style.lower())
+
+
+    if room:
+      # query = query.filter(Furniture.room.ilike(f"%{room}%"))
+      query = query.filter(func.lower(Furniture.room) == room.lower())
+
+    
+    filtered_furniture = query.all()
+
+    if not filtered_furniture:
+      return {"message": "No furniture found matching the criteria."}
+      
+    return filtered_furniture  
+  except Exception as e:
+    raise HTTPException(status_code=500, detail=f"Error filtering {str(e)}")
 
 @app.get("/get-furniture/{furniture_id}")  
 def list_furniture(furniture_id: int):
@@ -115,36 +154,23 @@ def list_furniture(furniture_id: int):
   except Exception as e:
     raise HTTPException(status_code=500, detail=f"Error getting furniture: {str(e)}")
   
-@app.get("/furniture/filter")
-def filter_furniture(
-  style: Optional[str] = Query(None, description="Filter by furniture style"),
-  room: Optional[str] = Query(None, description="Filter by room type")
-):
-  """
-  Filters furniture items based on style and room
-  Usage:
-  /furniture/filter/?style=Scandinavian
-  /furniture/filter/?room=Bedroom
-  """
 
-  try:
-    query = session.query(Furniture)
+  
+# @app.put("/update-furniture/{furniture_id}")
+# def upd_furniture():
+#   """
+#   Update furniture item
+#   """
+#   pass
 
-    if style:
-      query = query.filter(Furniture.style.ilike(f"%{style}%"))
 
-    if room:
-      query = query.filter(Furniture.room.ilike(f"%{room}%"))
-    
-    filtered_furniture = query.all()
+# @app.delete("/del-furniture/{furniture_id}")
+# def del_furniture(furniture_id: int):
+#   """
+#   Delete furniture item 
+#   """
 
-    if not filtered_furniture:
-      return {"message": "No furniture found matching the criteria."}
-      
-    return filtered_furniture  
-  except Exception as e:
-    raise HTTPException(status_code=500, detail=f"Error filtering str{e}")
-
+#   pass
 
 
 # Filter by Room type (E.g. Scandinavian, bedroom)
