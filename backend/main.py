@@ -1,13 +1,21 @@
-from sqlalchemy import create_engine, Column, Integer, String, Double, func
-from sqlalchemy.orm import sessionmaker, declarative_base
-from fastapi import FastAPI, HTTPException, Query
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from typing import Optional, List
 import os
+import shutil
+from typing import Optional, List
+from contextlib import contextmanager
+
 from dotenv import load_dotenv
+from sqlalchemy import create_engine, Column, Integer, String, Double, func, DateTime
+from sqlalchemy.orm import sessionmaker, declarative_base, Session as DBSession
+from fastapi import FastAPI, HTTPException, Query, File, UploadFile, Depends
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, JSONResponse
+from pydantic import BaseModel
+from datetime import datetime, timezone
+import uuid
 
 app = FastAPI()
+
+# --- CORS Middleware ---
 app.add_middleware(
   CORSMiddleware,
   allow_origins=["*"],    # Add your frontend URLs
@@ -16,13 +24,21 @@ app.add_middleware(
   allow_headers=["*"],    # Allows all headers
 )
 
+# --- Configuration & Setup ---
 load_dotenv()
+
 # Database URL (adjust username/password as needed)
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
 DB_HOST = os.getenv("DB_HOST")
 DB_NAME = os.getenv("DB_NAME")
 DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:5432/{DB_NAME}"
+
+# 'static' directory exists for storing images 
+# UPLOAD_DIR = "static/uploads"
+# GENERATED_DIR = "static/generated_designs"
+# os.makedirs(UPLOAD_DIR, exist_ok=True)
+# os.makedirs(GENERATED_DIR, exist_ok=True)
 
 # Set up SQLAlchemy Engine and Base
 engine = create_engine(DATABASE_URL)
@@ -31,8 +47,19 @@ Base = declarative_base()
 # Create a session factory
 Session = sessionmaker(bind=engine)
 session = Session()
+# SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# Define a sample model 
+# Dependency to get a database session for each request 
+# def get_db():
+#   db = SessionLocal()
+#   try:
+#     yield db
+#   finally:
+#     db.close()
+
+# --- SQLAlchemy Models (Database Table Definitions) ---
+
+# Furniture Model: Represents the 'furniture' table in your PostgreSQL database
 class Furniture(Base):
   __tablename__ = "furniture"
   id = Column(Integer, primary_key=True, autoincrement=True)
@@ -44,12 +71,22 @@ class Furniture(Base):
   imageLink = Column(String, nullable=True)
   purchaseLink = Column(String, nullable=True)
 
-# Create the table in the database
+# RoomDesign Model: Represents the 'room_designs' table for AI generated images
+# class RoomDesign(Base):
+#   __tablename__ = "room_designs"
+#   id = Column(Integer, primary_key=True, autoincrement=True)
+#   original_image_path = Column(String, nullable=False)
+#   generated_image_path = Column(String, nullable=True)
+#   design_style = Column(String, nullable=True)
+#   created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+# Create tables in the database
 Base.metadata.create_all(engine)
 
-# Pydantic model for request body
+# --- Pydantic Models (For API Request/Response Validation)
+
+# Pydantic model for request body when adding new furniture
 class FurnitureModel(BaseModel):
-  id: int 
   style: Optional[str] = None
   room: Optional[str] = None
   name : Optional[str] = None
@@ -57,6 +94,9 @@ class FurnitureModel(BaseModel):
   price: Optional[float] = None
   imageLink: Optional[str] = None
   purchaseLink: Optional[str] = None
+
+
+# --- API Endpoints ---
 
 @app.get("/")
 def read_root():
@@ -113,23 +153,19 @@ def filter_furniture(
   """
   Filters furniture items based on style and room
   Usage:
-  /furniture/filter/?style=Scandinavian
-  /furniture/filter/?room=Bedroom
+  /furniture/filter/?style=scandinavian
+  /furniture/filter/?room=bedroom
   """
 
   try:
     query = session.query(Furniture)
 
     if style:
-      # query = query.filter(Furniture.style.ilike(f"%{style}%"))
       query = query.filter(func.lower(Furniture.style) == style.lower())
 
-
     if room:
-      # query = query.filter(Furniture.room.ilike(f"%{room}%"))
       query = query.filter(func.lower(Furniture.room) == room.lower())
 
-    
     filtered_furniture = query.all()
 
     if not filtered_furniture:
@@ -154,37 +190,99 @@ def list_furniture(furniture_id: int):
   except Exception as e:
     raise HTTPException(status_code=500, detail=f"Error getting furniture: {str(e)}")
   
+#---------------------------------------------------------------------------------
 
+# Define the directory where uploaded files will be stored
+UPLOAD_DIRECTORY = "uploaded_files"
+
+# Create the upload directory if it doesn't exist
+os.makedirs(UPLOAD_DIRECTORY, exist_ok=True)
+
+@app.post("/upload-image/")
+async def upload_image(file: UploadFile = File(...)):
+  """
+  Uploads an image file to the server.
+  The file will be saved in the 'uploaded_files' directory.
+  """
+  try:
+    # Ensure the file is an image (optional, but good practice)
+    if not file.content_type.startswith("image/"):
+      raise HTTPException(status_code=400, detail="Only image files are allowed.")
+
+    # Create a unique filename to avoid overwriting existing files
+    # You might want to use UUID for more robust unique filenames in a real app
+    file_extension = os.path.splitext(file.filename)[1]
+    unique_filename = f"{os.urandom(8).hex()}{file_extension}"
+    file_path = os.path.join(UPLOAD_DIRECTORY, unique_filename)
+
+    # Save the uploaded file synchronously (for small to medium files)
+    # For very large files, consider using async file operations (aiofiles)
+    with open(file_path, "wb") as buffer:
+      shutil.copyfileobj(file.file, buffer)
+    
+    return {"message": f"File '{file.filename}' uploaded successfully as '{unique_filename}'", "filename": unique_filename}
+  except HTTPException as e:
+    raise e # Re-raise FastAPI HTTPExceptions
+  except Exception as e:
+    raise HTTPException(status_code=500, detail=f"Error uploading file: {str(e)}")
+
+@app.get("/download-image/{filename}")
+async def download_image(filename: str):
+  """
+  Downloads an image file from the server.
+  The file must exist in the 'uploaded_files' directory.
+  """
+  file_path = os.path.join(UPLOAD_DIRECTORY, filename)
+
+  # Check if the file exists
+  if not os.path.exists(file_path):
+    raise HTTPException(status_code=404, detail="File not found")
   
+  # Return the file as a FileResponse
+  # FastAPI will automatically set the Content-Type header based on the file extension
+  # and handle streaming the file.
+  return FileResponse(path=file_path, filename=filename, media_type="image/*")
+
+# --- Optional: Endpoint to list uploaded files (useful for testing) ---
+@app.get("/list-uploaded-files/")
+def list_uploaded_files():
+  """
+  Lists all files currently in the 'uploaded_files' directory.
+  """
+  try:
+    files = os.listdir(UPLOAD_DIRECTORY)
+    return {"uploaded_files": files}
+  except Exception as e:
+    raise HTTPException(status_code=500, detail=f"Error listing files: {str(e)}")
+
+@app.delete("/del-furniture/{furniture_id}")
+def del_furniture(furniture_id: int):
+  """
+  Delete furniture item 
+  """
+  try: 
+    furniture = session.query(Furniture).filter_by(id=furniture_id).first()
+    if furniture:
+      session.delete(furniture)
+      session.commit()
+      print("Furniture successfully deleted.")
+      return {"result": "ok"}
+    
+    else:
+      raise HTTPException(status_code=404, detail=f"Furniture not found.")
+
+  except Exception as e:
+    session.rollback()
+    raise HTTPException(status_code=500, detail=f"Error deleting book: {str(e)}")
+    
+
+
 # @app.put("/update-furniture/{furniture_id}")
 # def upd_furniture():
 #   """
 #   Update furniture item
 #   """
 #   pass
-
-
-# @app.delete("/del-furniture/{furniture_id}")
-# def del_furniture(furniture_id: int):
-#   """
-#   Delete furniture item 
-#   """
-
-#   pass
-
-
-# Filter by Room type (E.g. Scandinavian, bedroom)
-# @app.get("/get-furniture/style/{style}")
-# def get_furniture_by_style(style: str):
-#   try:
-#     furnitures = session.query(Furniture).filter(
-#       Furniture.style.ilike(f"%{style}%")
-#     ).all()
-
-#     if not furnitures:
-#       return {"message": f"No furniture found with style: {style}", "data":[]}
-#   except Exception as e:
-#     raise HTTPException(status_code=500, detail=f"Error filtering by style: {str(e)}")
 
 
 
