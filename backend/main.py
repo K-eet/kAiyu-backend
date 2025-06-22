@@ -3,7 +3,6 @@ import shutil
 from io import BytesIO
 from typing import Optional, List
 from datetime import datetime, timezone
-import uuid
 
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, Column, Integer, String, Double, func, DateTime, ForeignKey
@@ -12,9 +11,8 @@ from fastapi import FastAPI, HTTPException, Query, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, HTMLResponse
 from pydantic import BaseModel
-from contextlib import asynccontextmanager
-
-# from PIL import Image
+from contextlib import asynccontextmanager # Import for lifespan management
+from PIL import Image
 
 # --- Configuration & Setup ---
 load_dotenv()
@@ -37,6 +35,12 @@ Base = declarative_base()
 
 # Create a session factory
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+# --- Directory to store uploaded and generated images ---
+UPLOAD_DIR = "uploads"
+GENERATED_DIR = "generated"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+os.makedirs(GENERATED_DIR, exist_ok=True)
 
 # Dependency to get a database session for each request 
 def get_db():
@@ -74,7 +78,7 @@ class RoomDesign(Base):
 
   furniture = relationship("Furniture", back_populates="room_designs")
 
-# --- Pydantic Models (For API Request/Response Validation)
+# --- Pydantic Models (For API Request/Response Validation) ---
 
 # Pydantic model for request body when adding new furniture
 class FurnitureModel(BaseModel):
@@ -103,7 +107,7 @@ class RoomDesignResponse(BaseModel):
     orm_mode = True
     from_attributes = True
 
-# --- Lifespan Context Manager for Database Setup
+# --- Lifespan Context Manager for Database Setup ---
 @asynccontextmanager
 async def lifespan(app: FastAPI):
   """
@@ -135,6 +139,92 @@ def read_root():
   Root endpoint for the Furniture API.
   """
   return {"message": "Welcome to the Furniture API"}
+
+# --- Simulate the upload and generate image endpoints --- 
+
+@app.post("/upload-image/{furniture_id}", response_model=RoomDesignResponse)
+async def upload_image(furniture_id: int, file: UploadFile = File(...)):
+    """
+    Uploads an original image for a furniture item.
+    Stores the path in the room_designs table.
+    """
+    db = SessionLocal()
+    try:
+        furniture = db.query(Furniture).filter_by(id=furniture_id).first()
+        if not furniture:
+            raise HTTPException(status_code=404, detail="Furniture not found.")
+
+        extension = os.path.splitext(file.filename)[1].lower()
+        if extension not in [".jpg", ".jpeg", ".png"]:
+            raise HTTPException(status_code=400, detail="Invalid file type.")
+
+        unique_filename = f"{furniture_id}_{os.urandom(8).hex()}{extension}"
+        file_path = os.path.join(UPLOAD_DIR, unique_filename)
+
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+
+        # Insert record into room_designs (simulate generated as same image)
+        new_design = RoomDesign(
+            furniture_id=furniture_id,
+            original_image_path=file_path,
+            generated_image_path=file_path,  # Initially same
+            design_style="original"
+        )
+        db.add(new_design)
+        db.commit()
+        db.refresh(new_design)
+        return new_design
+
+    finally:
+        db.close()
+
+@app.post("/generate-image/{room_design_id}", response_model=RoomDesignResponse)
+async def generate_image(room_design_id: int):
+    """
+    Simulate AI generation by copying the original image as the generated one.
+    Updates the generated_image_path in the room_designs table.
+    """
+    db = SessionLocal()
+    try:
+        design = db.query(RoomDesign).filter_by(id=room_design_id).first()
+        if not design:
+            raise HTTPException(status_code=404, detail="RoomDesign not found.")
+
+        original_path = design.original_image_path
+        if not os.path.exists(original_path):
+            raise HTTPException(status_code=400, detail="Original image missing.")
+
+        # Simulate 'AI generated' image by copying
+        filename = os.path.basename(original_path)
+        generated_filename = f"generated_{filename}"
+        generated_path = os.path.join(GENERATED_DIR, generated_filename)
+        shutil.copy(original_path, generated_path)
+
+        design.generated_image_path = generated_path
+        design.design_style = "simulated"
+        design.generation_date = datetime.now(timezone.utc)
+
+        db.commit()
+        db.refresh(design)
+        return design
+    finally:
+        db.close()
+
+@app.get("/view-image/{folder}/{filename}")
+def view_image(folder: str, filename: str):
+    """
+    View uploaded or generated image.
+    Example: /view-image/uploads/filename.jpg
+    """
+    if folder not in ["uploads", "generated"]:
+        raise HTTPException(status_code=400, detail="Invalid folder.")
+    file_path = os.path.join(folder, filename)
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="Image not found.")
+    return FileResponse(file_path)
+
+# --- POST & GET Furniture Endpoints ---
 
 @app.post("/furniture/", response_model=List[FurnitureModel])
 def add_furniture(furniture: FurnitureModel):
@@ -226,69 +316,6 @@ def get_furniture_by_id(furniture_id: int):
     db.close()
   
 #---------------------------------------------------------------------------------
-
-# # Define the directory where uploaded files will be stored
-# UPLOAD_DIRECTORY = "uploaded_files"
-
-# # Create the upload directory if it doesn't exist
-# os.makedirs(UPLOAD_DIRECTORY, exist_ok=True)
-
-# @app.post("/upload-image/")
-# async def upload_image(file: UploadFile = File(...)):
-#   """
-#   Uploads an image file to the server.
-#   The file will be saved in the 'uploaded_files' directory.
-#   """
-#   try:
-#     # Ensure the file is an image (optional, but good practice)
-#     if not file.content_type.startswith("image/"):
-#       raise HTTPException(status_code=400, detail="Only image files are allowed.")
-
-#     # Create a unique filename to avoid overwriting existing files
-#     # You might want to use UUID for more robust unique filenames in a real app
-#     file_extension = os.path.splitext(file.filename)[1]
-#     unique_filename = f"{os.urandom(8).hex()}{file_extension}"
-#     file_path = os.path.join(UPLOAD_DIRECTORY, unique_filename)
-
-#     # Save the uploaded file synchronously (for small to medium files)
-#     # For very large files, consider using async file operations (aiofiles)
-#     with open(file_path, "wb") as buffer:
-#       shutil.copyfileobj(file.file, buffer)
-    
-#     return {"message": f"File '{file.filename}' uploaded successfully as '{unique_filename}'", "filename": unique_filename}
-#   except HTTPException as e:
-#     raise e # Re-raise FastAPI HTTPExceptions
-#   except Exception as e:
-#     raise HTTPException(status_code=500, detail=f"Error uploading file: {str(e)}")
-
-# @app.get("/download-image/{filename}")
-# async def download_image(filename: str):
-#   """
-#   Downloads an image file from the server.
-#   The file must exist in the 'uploaded_files' directory.
-#   """
-#   file_path = os.path.join(UPLOAD_DIRECTORY, filename)
-
-#   # Check if the file exists
-#   if not os.path.exists(file_path):
-#     raise HTTPException(status_code=404, detail="File not found")
-  
-#   # Return the file as a FileResponse
-#   # FastAPI will automatically set the Content-Type header based on the file extension
-#   # and handle streaming the file.
-#   return FileResponse(path=file_path, filename=filename, media_type="image/*")
-
-# # --- Optional: Endpoint to list uploaded files (useful for testing) ---
-# @app.get("/list-uploaded-files/")
-# def list_uploaded_files():
-#   """
-#   Lists all files currently in the 'uploaded_files' directory.
-#   """
-#   try:
-#     files = os.listdir(UPLOAD_DIRECTORY)
-#     return {"uploaded_files": files}
-#   except Exception as e:
-#     raise HTTPException(status_code=500, detail=f"Error listing files: {str(e)}")
 
 # @app.delete("/del-furniture/{furniture_id}")
 # def del_furniture(furniture_id: int):
