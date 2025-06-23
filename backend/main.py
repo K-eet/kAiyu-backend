@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, Column, Integer, String, Double, func, DateTime, ForeignKey
 from sqlalchemy.orm import sessionmaker, declarative_base, Session as DBSession, relationship
-from fastapi import FastAPI, HTTPException, Query, File, UploadFile
+from fastapi import FastAPI, HTTPException, Query, File, UploadFile, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, HTMLResponse
 from pydantic import BaseModel
@@ -224,9 +224,9 @@ def view_image(folder: str, filename: str):
         raise HTTPException(status_code=404, detail="Image not found.")
     return FileResponse(file_path)
 
-# --- POST & GET Furniture Endpoints ---
+# --- POST, GET, PUT, DEL Furniture Endpoints ---
 
-@app.post("/furniture/", response_model=List[FurnitureModel])
+@app.post("/post-furniture/", response_model=List[FurnitureModel])
 def add_furniture(furniture: FurnitureModel):
   """
   Adds a new furniture item to the database.
@@ -254,7 +254,7 @@ def add_furniture(furniture: FurnitureModel):
     db.close()
 
 @app.get("/get-furniture", response_model=List[FurnitureModel])
-def list_furniture():
+def list_all_furniture():
   """
   Retrieves all furniture items from the database.
   """
@@ -314,37 +314,66 @@ def get_furniture_by_id(furniture_id: int):
     raise HTTPException(status_code=500, detail=f"Error getting furniture: {str(e)}")
   finally: 
     db.close()
-  
-#---------------------------------------------------------------------------------
-
-# @app.delete("/del-furniture/{furniture_id}")
-# def del_furniture(furniture_id: int):
-#   """
-#   Delete furniture item 
-#   """
-#   try: 
-#     furniture = session.query(Furniture).filter_by(id=furniture_id).first()
-#     if furniture:
-#       session.delete(furniture)
-#       session.commit()
-#       print("Furniture successfully deleted.")
-#       return {"result": "ok"}
     
-#     else:
-#       raise HTTPException(status_code=404, detail=f"Furniture not found.")
+@app.put("/update-furniture/{furniture_id}", response_model=FurnitureModel)
+async def update_furniture(furniture_id: int, updated_furniture: FurnitureModel):
+	"""
+	Update a furniture item by its ID.
+	"""
+	db = SessionLocal()
+	try:
+		furniture = db.query(Furniture).filter_by(id=furniture_id).first()
+		if not furniture:
+				raise HTTPException(status_code=404, detail="Furniture not found")
 
-#   except Exception as e:
-#     session.rollback()
-#     raise HTTPException(status_code=500, detail=f"Error deleting book: {str(e)}")
-    
+		# Update fields only if provided
+		if updated_furniture.style is not None:
+				furniture.style = updated_furniture.style
+		if updated_furniture.room is not None:
+				furniture.room = updated_furniture.room
+		if updated_furniture.name is not None:
+				furniture.name = updated_furniture.name
+		if updated_furniture.type is not None:
+				furniture.type = updated_furniture.type
+		if updated_furniture.price is not None:
+				furniture.price = updated_furniture.price
+		if updated_furniture.imageLink is not None:
+				furniture.imageLink = updated_furniture.imageLink
+		if updated_furniture.purchaseLink is not None:
+				furniture.purchaseLink = updated_furniture.purchaseLink
+
+		db.commit()
+		db.refresh(furniture)
+		return furniture
+
+	except Exception as e:
+		db.rollback()
+		raise HTTPException(status_code=500, detail=f"Error updating furniture: {str(e)}")
+	finally:
+		db.close()
 
 
-# @app.put("/update-furniture/{furniture_id}")
-# def upd_furniture():
-#   """
-#   Update furniture item
-#   """
-#   pass
+@app.delete("/delete-furniture/{furniture_id}", response_model=dict)
+async def delete_furniture(furniture_id: int):
+	"""
+	Delete a furniture item by its ID.
+	"""
+	db = SessionLocal()
+	try:
+		furniture = db.query(Furniture).filter_by(id=furniture_id).first()
+		if not furniture:
+			raise HTTPException(status_code=404, detail="Furniture not found")
+
+		db.delete(furniture)
+		db.commit()
+		return {"message": f"Furniture with ID {furniture_id} has been deleted."}
+
+	except Exception as e:
+		db.rollback()
+		raise HTTPException(status_code=500, detail=f"Error deleting furniture: {str(e)}")
+	finally:
+		db.close()
+#--------------------------------------------------------------------------------
 
 
 
