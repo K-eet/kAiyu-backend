@@ -9,6 +9,7 @@ class GeneratedRoomModel(BaseModel):
   id: int
   original_image_path: str
   generated_image_path: str
+  room_style: Optional[str] = None
   design_style: Optional[str] = None 
   generated_date: Optional[datetime] = None
 
