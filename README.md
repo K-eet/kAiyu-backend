@@ -1,50 +1,94 @@
-# kAiyu-backend
+# 🏡 kAiyu Backend
 
-# 🏡 AI Interior Design Web App
+**AI Interior Design Web App**
 
-This is an AI-powered interior design web application that allows users to upload empty room images, select room, and style preferences, and generate furniture-filled designs using IKEA products. 
+This backend enables users to **upload empty room images**, select **room types** and **style preferences**, and generate **furniture-filled designs** using **IKEA products**.
+
+
+---
+
+## 📁 Project Structure
+
+This repository contains the backend system built with:
+
+- **FastAPI** for the web API
+- **PostgreSQL** for the database
+- **SQLAlchemy** for ORM
+- **Pydantic** for data validation
+- **pgAdmin4** for database management
+
+---
 
 ## 🚀 Getting Started
+#### Follow these steps to set up the backend locally.
 
-### 1. Clone the repository
+### 📁 1. Clone the Repository
 
-1. git clone https://github.com/K-eet/kAiyu-backend.git
-2. cd kAiyu-backend
+```bash
+1. `git clone https://github.com/K-eet/kAiyu-backend.git`
+2. `cd kAiyu-backend`
+```
 
 ## Backend Setup 
 
-### 1. Create and activate virtual environment
+### 🐍 2. Set Up Virtual Environment
 
-1. python -m venv .venv  # Create venv
-2. source .venv/Scripts/activate  # Activate .venv for windows using Bash command line
-3. .venv\Scripts\activate
+1. **Create the virtual environment**  
+   `python -m venv .venv`
 
-### 2. Install backend dependencies
+2. **Activate the virtual environment**
 
-1. pip install -r requirements.txt
+   - *For Windows (Bash):*  
+     `source .venv/Scripts/activate`
 
-### 3. Setup PostgreSQL Database
+   - *For Windows (Command Prompt):*  
+     `.venv\Scripts\activate`
 
-1. Create database called "furniture_db"
+> ⚠️ **Important:** Add `.venv` to your `.gitignore` to avoid committing unnecessary files and folders related to your local Python environment.
 
-### 4. Configure environment variables
+### 📦 3. Install Dependencies
 
-1. Create .env file in the backend/ directory
-2. Setup the .env as below: 
-- DB_USER = ""
-- DB_PASSWORD = ""
-- DB_HOST = ""
-- DB_NAME = ""
-3. Fill in the empty string with your own pgAdmin4 credentials
-4. Remember to place your .env inside your .gitignore file
+`pip install -r requirements.txt`
 
-### 5. Start FastAPI server
+### 🛢️ 4. Set Up PostgreSQL Database
 
-- Open your preferred command line
-- uvicorn backend.main:app --reload 
-- Make sure your directory is in /kAiyu-backend
+1. Open pgAdmin4 or your preferred PostgreSQL client.
+2. Create a new database named: furniture_db
+  
+### 🔐 5. Configure Environment Variables
 
-### 6. Import furniture data
+1. In the **`backend/`** directory, create a `.env` file.
+2. Add the following variables:
 
-- Open another command line
-- python -m backend.scripts.import_furniture
+```env
+DB_USER=your_username
+DB_PASSWORD=your_password
+DB_HOST=localhost
+DB_NAME=furniture_db
+```
+
+⚠️ Important: Add .env to your .gitignore to keep your credentials safe.
+
+### 🚦 6. Run the FastAPI Server
+
+1. Make sure you're in the root directory (/kAiyu-backend) and run:
+2. `uvicorn backend.main:app --reload` 
+3. The server will start at: http://127.0.0.1:8000
+4. http://127.0.0.1:8000/docs to open the Swagger UI
+
+### 🛋️ 7. Import Furniture Data
+
+You can import furniture data using one of the following methods:
+
+#### ✅ Method 1: Using Python Script
+
+1. In a **new terminal window**, run:
+`python -m backend.scripts.import_furniture`
+2. Another method is to **Import/Export Data** from the pgAdmin4 itself. Use the data under the database folder called **furniture_table.csv**
+
+#### ✅ Method 2: Using pgAdmin4 (Manual Import)
+1. Open pgAdmin4 and connect to your **furniture_db** database.
+2. Navigate to the appropriate table (e.g., furniture).
+3. Use the Import/Export feature to import data manually.
+4. Select the CSV file located at:
+**/database/furniture_table.csv**
