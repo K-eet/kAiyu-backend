@@ -1,7 +1,7 @@
 import pandas as pd
 from sqlalchemy.orm import Session
 from backend.core.database import SessionLocal
-from backend.models.furniture import Furniture
+from backend.models.models import Furniture
 
 def import_csv_to_furniture(csv_path: str):
   df = pd.read_csv(csv_path)
@@ -28,4 +28,4 @@ def import_csv_to_furniture(csv_path: str):
   print("Furniture data imported successfully.")
 
 if __name__ == "__main__":
-  import_csv_to_furniture("./database/bedroom-db.csv")
+  import_csv_to_furniture("./database/furniture_table.csv")
