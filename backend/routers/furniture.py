@@ -38,8 +38,9 @@ def list_all_furniture(limit: int = 100, offset: int = 0, db: Session = Depends(
 def filter_furniture(style: str = Query(None), room: str = Query(None), db: Session = Depends(get_db)):
     """
     Filter by style and room
-    E.g. style = MODERN
-         room = LIVING ROOM
+    E.g. style: MODERN
+         room: LIVING ROOM
+    Accept upper and lower case input
     """
     query = db.query(Furniture)
     if style:
@@ -52,7 +53,7 @@ def filter_furniture(style: str = Query(None), room: str = Query(None), db: Sess
 def filter_furniture_by_type(type: str = Query(None), db: Session = Depends(get_db)):
     """
     Filter by type of furniture
-    E.g. type = BED
+    E.g. type: BED
     """
     query = db.query(Furniture)
     if type: 
@@ -62,8 +63,9 @@ def filter_furniture_by_type(type: str = Query(None), db: Session = Depends(get_
 @router.get("/{furniture_id}", response_model=FurnitureModel)
 def get_furniture_by_id(furniture_id: str, db: Session = Depends(get_db)):
     """
-    Filter by furniture id. Can accept lowercase
-    E.g. furniture_id = B001 or b001
+    Filter by furniture id. 
+    E.g. furniture_id: B001 or b001
+    Accept upper and lower case input 
     """
     furniture = db.query(Furniture).filter(func.lower(Furniture.furniture_id) == furniture_id.lower()).first()
     if not furniture:
@@ -73,6 +75,7 @@ def get_furniture_by_id(furniture_id: str, db: Session = Depends(get_db)):
 @router.put("/{furniture_id}", response_model=FurnitureModel)
 def update_furniture(furniture_id: int, updated: FurnitureModel, db: Session = Depends(get_db)):
     """
+    Optional:
     Update furniture item
     """
     furniture = db.query(Furniture).filter_by(id=furniture_id).first()
@@ -89,6 +92,7 @@ def update_furniture(furniture_id: int, updated: FurnitureModel, db: Session = D
 @router.delete("/{furniture_id}", response_model=dict)
 def delete_furniture(furniture_id: int, db: Session = Depends(get_db)):
     """
+    Optional: 
     Delete furniture item
     """
     furniture = db.query(Furniture).filter_by(id=furniture_id).first()

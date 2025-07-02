@@ -11,6 +11,7 @@ def import_csv_to_furniture(csv_path: str):
   for _, row in df.iterrows():
     try: 
       furniture = Furniture(
+        furniture_id=row["furniture_id"],
         style=row["style"],
         room=row["room"],
         name=row["name"],
