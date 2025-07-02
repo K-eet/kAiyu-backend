@@ -25,8 +25,8 @@ This repository contains the backend system built with:
 ### 📁 1. Clone the Repository
 
 ```bash
-1. `git clone https://github.com/K-eet/kAiyu-backend.git`
-2. `cd kAiyu-backend`
+1. git clone https://github.com/K-eet/kAiyu-backend.git
+2. cd kAiyu-backend
 ```
 
 ## Backend Setup 
