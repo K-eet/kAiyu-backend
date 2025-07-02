@@ -48,5 +48,5 @@ class FurnitureCoordinatesModel(BaseModel):
   x_coordinate: float
   y_coordinate: float
 
-class Config:
-  orm_mode = True # Allows Pydantic to work with SQLAlchemy models directly
+  class Config:
+    orm_mode = True # Allows Pydantic to work with SQLAlchemy models directly
