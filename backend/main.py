@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from backend.core.database import Base, engine
-from backend.routers import furniture, generated
+from backend.routers import furniture, generated, coordinates
 from fastapi.middleware.cors import CORSMiddleware
 
 @asynccontextmanager
@@ -21,6 +21,7 @@ app.add_middleware(
 
 app.include_router(furniture.router)
 app.include_router(generated.router)
+app.include_router(coordinates.router)
 
 @app.get("/")
 def read_root():

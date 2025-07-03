@@ -50,3 +50,12 @@ class FurnitureCoordinatesModel(BaseModel):
 
   class Config:
     orm_mode = True # Allows Pydantic to work with SQLAlchemy models directly
+
+class FurnitureCoordinateCreate(BaseModel):
+  furniture_id: str
+  x_coordinate: float
+  y_coordinate: float
+
+class FurnitureCoordinateBatchCreate(BaseModel):
+  generated_room_id: int
+  coordinates: List[FurnitureCoordinateCreate]
