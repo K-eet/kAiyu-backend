@@ -45,7 +45,6 @@ class FurnitureCoordinates(Base):
   __tablename__ = "furniture_coordinates"
   id = Column(Integer, primary_key=True, autoincrement=True)
   furniture_id = Column(String, ForeignKey("furniture.furniture_id"), nullable=False)
-  # generated_room_id = Column(Integer, ForeignKey("generated_rooms.id"),nullable=False)
   generated_room_id = Column(Integer, ForeignKey("generated_rooms.generated_room_id"),nullable=False)
   x_coordinate = Column(Float, nullable=False)
   y_coordinate = Column(Float, nullable=False)
