@@ -29,7 +29,7 @@ class GeneratedRoomModel(BaseModel):
   id: int
   original_image_path: str
   generated_image_path: str
-  generated_room_id: int
+  generated_room_id: str
   room_style: Optional[str] = None
   design_style: Optional[str] = None
   generated_date: Optional[datetime] = None
@@ -43,7 +43,7 @@ class GeneratedRoomModel(BaseModel):
 # Pydantic Schema: Represents the structure of furniture coordinates
 class FurnitureCoordinatesModel(BaseModel):
   id: Optional[int] = None
-  generated_room_id: int
+  generated_room_id: str
   furniture_id: str
   x_coordinate: float
   y_coordinate: float
@@ -57,5 +57,5 @@ class FurnitureCoordinateCreate(BaseModel):
   y_coordinate: float
 
 class FurnitureCoordinateBatchCreate(BaseModel):
-  generated_room_id: int
+  generated_room_id: str
   coordinates: List[FurnitureCoordinateCreate]

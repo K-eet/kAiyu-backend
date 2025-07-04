@@ -1,8 +1,9 @@
 import os
 import shutil
+import re
 from fastapi import APIRouter, HTTPException, UploadFile, File, Depends, Form
 from fastapi.responses import FileResponse
-from sqlalchemy import func
+from sqlalchemy import func, desc
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone
 from backend.core.config import UPLOAD_DIR, GENERATED_DIR
@@ -35,8 +36,20 @@ def upload_and_generate_image(
     shutil.copyfileobj(file.file, buffer)
 
   # 2. Determine next generated_room_id
-  latest = db.query(func.max(GeneratedRoom.generated_room_id)).scalar()
-  next_generated_room_id = 1 if latest is None else latest + 1 
+  # latest = db.query(func.max(GeneratedRoom.generated_room_id)).scalar()
+  # next_generated_room_id = 1 if latest is None else latest + 1 
+  try:
+    latest_id_obj = db.query(GeneratedRoom.generated_room_id).filter(
+        GeneratedRoom.generated_room_id.like("R%")
+    ).order_by(desc(GeneratedRoom.id)).first()
+
+    if latest_id_obj and latest_id_obj[0].startswith("R"):
+        latest_number = int(re.sub("[^0-9]", "", latest_id_obj[0]))
+        next_generated_room_id = f"R{latest_number + 1}"
+    else:
+        next_generated_room_id = "R1"
+  except Exception as e:
+    raise HTTPException(status_code=500, detail=f"Error generating ID: {str(e)}")
 
   # 3. Create GeneratedRoom entry
   design = GeneratedRoom(
