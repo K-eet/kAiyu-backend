@@ -11,6 +11,7 @@ from backend.core.database import get_db
 from backend.models.models import Furniture, GeneratedRoom, FurnitureCoordinates
 from backend.schemas.schemas import FurnitureCreate, FurnitureModel, GeneratedRoomModel, FurnitureCoordinatesModel
 import uuid
+from typing import List
 
 router = APIRouter(prefix="/generated", tags=["Generated Rooms"])
 
@@ -107,3 +108,11 @@ def view_image(folder: str, filename: str):
     raise HTTPException(status_code=404, detail="Image not found")
 
   return FileResponse(path, media_type="image/jpeg")
+
+@router.get("/gallery", response_model=List[GeneratedRoomModel])
+def get_all_generated_rooms(db: Session = Depends(get_db)):
+  """
+  Get all previously generated room records (for gallery view).
+  """
+  rooms = db.query(GeneratedRoom).order_by(desc(GeneratedRoom.generated_date)).all()
+  return rooms
