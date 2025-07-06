@@ -112,23 +112,41 @@ def auto_generate_coordinates(
 
 		# Simulate AI (random x/y or predefined pattern)
 		import random
+		# coordinates = []
+		# for furniture in furniture_items:
+		# 	x = round(random.uniform(0.1, 0.9), 2)
+		# 	y = round(random.uniform(0.1, 0.9), 2)
+		# 	coord = FurnitureCoordinates(
+		# 			generated_room_id=generated_room_id,
+		# 			furniture_id=furniture.furniture_id,
+		# 			x_coordinate=x,
+		# 			y_coordinate=y
+		# 		)
+		# 	db.add(coord)
+		# 	coordinates.append(coord)
+
+		# db.commit()
+		# return coordinates
+
+		num_to_generate = random.randint(3, min(8, len(furniture_items)))
+		selected_furniture = random.sample(furniture_items, num_to_generate)
+
 		coordinates = []
-		for furniture in furniture_items:
+		for furniture in selected_furniture:
 			x = round(random.uniform(0.1, 0.9), 2)
 			y = round(random.uniform(0.1, 0.9), 2)
+
 			coord = FurnitureCoordinates(
-					generated_room_id=generated_room_id,
-					furniture_id=furniture.furniture_id,
-					x_coordinate=x,
-					y_coordinate=y
-				)
+				generated_room_id=generated_room_id,
+				furniture_id=furniture.furniture_id,
+				x_coordinate=x,
+				y_coordinate=y
+			)
 			db.add(coord)
 			coordinates.append(coord)
 
 		db.commit()
 		return coordinates
-
-
 
 # @router.post("/coordinates/batch", response_model=List[FurnitureCoordinatesModel])
 # def create_coordinates_batch(

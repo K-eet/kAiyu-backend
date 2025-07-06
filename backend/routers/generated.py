@@ -39,19 +39,35 @@ def upload_and_generate_image(
   # 2. Determine next generated_room_id
   # latest = db.query(func.max(GeneratedRoom.generated_room_id)).scalar()
   # next_generated_room_id = 1 if latest is None else latest + 1 
-  try:
-    latest_id_obj = db.query(GeneratedRoom.generated_room_id).filter(
-        GeneratedRoom.generated_room_id.like("R%")
-    ).order_by(desc(GeneratedRoom.id)).first()
+  # try:
+  #   latest_id_obj = db.query(GeneratedRoom.generated_room_id).filter(
+  #       GeneratedRoom.generated_room_id.like("R%")
+  #   ).order_by(desc(GeneratedRoom.id)).first()
 
-    if latest_id_obj and latest_id_obj[0].startswith("R"):
-        latest_number = int(re.sub("[^0-9]", "", latest_id_obj[0]))
-        next_generated_room_id = f"R{latest_number + 1}"
+  #   if latest_id_obj and latest_id_obj[0].startswith("R"):
+  #       latest_number = int(re.sub("[^0-9]", "", latest_id_obj[0]))
+  #       next_generated_room_id = f"R{latest_number + 1}"
+  #   else:
+  #       next_generated_room_id = "R1"
+  # except Exception as e:
+  #   raise HTTPException(status_code=500, detail=f"Error generating ID: {str(e)}")
+  try: 
+    today_str = datetime.now().strftime("%y%m%d")
+    id_prefix = f"R-{today_str}"
+
+    latest_id_obj = db.query(GeneratedRoom.generated_room_id).filter(
+      GeneratedRoom.generated_room_id.like(f"{id_prefix}-%")
+      ).order_by(desc(GeneratedRoom.id)).first()
+    
+    if latest_id_obj: 
+      latest_number = int(latest_id_obj[0].split("-")[-1])
+      next_generated_room_id = f"{id_prefix}-{latest_number + 1:03d}"
     else:
-        next_generated_room_id = "R1"
+      next_generated_room_id = f"{id_prefix}-001"
+
   except Exception as e:
     raise HTTPException(status_code=500, detail=f"Error generating ID: {str(e)}")
-
+    
   # 3. Create GeneratedRoom entry
   design = GeneratedRoom(
     original_image_path=file_path,
