@@ -25,8 +25,8 @@ This repository contains the backend system built with:
 ### 📁 1. Clone the Repository
 
 ```bash
-1. `git clone https://github.com/K-eet/kAiyu-backend.git`
-2. `cd kAiyu-backend`
+1. git clone https://github.com/K-eet/kAiyu-backend.git
+2. cd kAiyu-backend
 ```
 
 ## Backend Setup 
@@ -34,8 +34,11 @@ This repository contains the backend system built with:
 ### 🐍 2. Set Up Virtual Environment
 
 1. **Create the virtual environment**  
-   `python -m venv .venv`
-
+```myvenv
+python -m venv .venv 
+OR
+py -m venv .venv
+```
 2. **Activate the virtual environment**
 
    - *For Windows (Bash):*  
@@ -71,10 +74,15 @@ DB_NAME=furniture_db
 
 ### 🚦 6. Run the FastAPI Server
 
-1. Make sure you're in the root directory (/kAiyu-backend) and run:
-2. `uvicorn backend.main:app --reload` 
-3. The server will start at: http://127.0.0.1:8000
-4. http://127.0.0.1:8000/docs to open the Swagger UI
+1. Open your terminal and make sure you're in the root project directory:
+`/kAiyu-backend`
+2. Run the development server with: 
+`uvicorn backend.main:app --reload` 
+3. Once the server is running, you can access it at:
+- API Root: http://127.0.0.1:8000
+- Swagger UI (API docs) http://127.0.0.1:8000/docs
+4. ⚠️ If you encounter an "address already in use" error, it means port 8000 is occupied. To resolve this, run the server on a different port (e.g. 8080 or 9000):
+`uvicorn backend.main:app --reload --port 8080`
 
 ### 🛋️ 7. Import Furniture Data
 
@@ -92,3 +100,13 @@ You can import furniture data using one of the following methods:
 3. Use the Import/Export feature to import data manually.
 4. Select the CSV file located at:
 **/database/furniture_table.csv**
+
+### 🎈 8. Streamlit App (Optional Frontend)
+You can run a quick frontend interface using Streamlit
+1. Open a new terminal window
+2. Run the following command: 
+`
+streamlit run backend/app.py
+`
+
+✅ This provides a simple interface for uploading room images, selecting filters, and previewing simulated AI-generated results.

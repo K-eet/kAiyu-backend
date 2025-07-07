@@ -30,7 +30,7 @@ class GeneratedRoom(Base):
   id = Column(Integer, primary_key=True, autoincrement=True)
   original_image_path = Column(String, nullable=False)
   generated_image_path = Column(String, nullable=False)
-  generated_room_id = Column(Integer, nullable=False, unique=True)
+  generated_room_id = Column(String, nullable=False, unique=True)
   room_style = Column(String, nullable=False)
   design_style = Column(String, nullable=False)
   generated_date = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
@@ -45,8 +45,7 @@ class FurnitureCoordinates(Base):
   __tablename__ = "furniture_coordinates"
   id = Column(Integer, primary_key=True, autoincrement=True)
   furniture_id = Column(String, ForeignKey("furniture.furniture_id"), nullable=False)
-  # generated_room_id = Column(Integer, ForeignKey("generated_rooms.id"),nullable=False)
-  generated_room_id = Column(Integer, ForeignKey("generated_rooms.generated_room_id"),nullable=False)
+  generated_room_id = Column(String, ForeignKey("generated_rooms.generated_room_id"),nullable=False)
   x_coordinate = Column(Float, nullable=False)
   y_coordinate = Column(Float, nullable=False)
 
