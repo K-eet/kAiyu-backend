@@ -7,3 +7,8 @@ streamlit
 pillow
 requests
 python-multipart
+diffusers
+transformers
+accelerate 
+scipy
+safetensors

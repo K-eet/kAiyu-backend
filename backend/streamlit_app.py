@@ -3,7 +3,7 @@ from streamlit_image_comparison import image_comparison
 import requests
 import os
 
-BACKEND_URL = "http://localhost:8080"
+BACKEND_URL = "http://localhost:8000"
 
 st.set_page_config(page_title="AI Interior Design App", layout="wide")
 

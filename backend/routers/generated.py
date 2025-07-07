@@ -1,19 +1,31 @@
-import os
-import shutil
-import re
-from fastapi import APIRouter, HTTPException, UploadFile, File, Depends, Form
-from fastapi.responses import FileResponse
-from sqlalchemy import func, desc
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
 from sqlalchemy.orm import Session
+from sqlalchemy import func, desc
 from datetime import datetime, timezone
-from backend.core.config import UPLOAD_DIR, GENERATED_DIR
 from backend.core.database import get_db
-from backend.models.models import Furniture, GeneratedRoom, FurnitureCoordinates
-from backend.schemas.schemas import FurnitureCreate, FurnitureModel, GeneratedRoomModel, FurnitureCoordinatesModel
-import uuid
+from backend.models.models import GeneratedRoom, Furniture
+from backend.schemas.schemas import GeneratedRoomModel
+import os, shutil, uuid, re
+from fastapi.responses import FileResponse
 from typing import List
 
+# Stable Diffusion
+from diffusers import StableDiffusionImg2ImgPipeline
+import torch
+from PIL import Image
+from io import BytesIO
+
+from backend.core.config import UPLOAD_DIR, GENERATED_DIR
+
 router = APIRouter(prefix="/generated", tags=["Generated Rooms"])
+
+# Load model once
+device = "cuda" if torch.cuda.is_available() else "cpu"
+pipe = StableDiffusionImg2ImgPipeline.from_pretrained(
+    "runwayml/stable-diffusion-v1-5",
+    torch_dtype=torch.float16 if device == "cuda" else torch.float32,
+    use_safetensors=True
+).to(device)
 
 @router.post("/generate-image/", response_model=GeneratedRoomModel)
 def upload_and_generate_image(
@@ -25,89 +37,74 @@ def upload_and_generate_image(
   """
   Upload image + room & design style -> filters furniture -> simulates image generation 
   """
-  # 1. Validate and save uploaded image
+  # Validate file
   ext = os.path.splitext(file.filename)[1].lower()
   if ext not in [".jpg", ".jpeg", ".png"]:
-    raise HTTPException(status_code=400, detail="Invalid file type")
+      raise HTTPException(status_code=400, detail="Invalid file type")
 
   filename = f"{uuid.uuid4().hex}{ext}"
   file_path = os.path.join(UPLOAD_DIR, filename)
 
-  with open(file_path, "wb") as buffer: 
-    shutil.copyfileobj(file.file, buffer)
+  with open(file_path, "wb") as buffer:
+      shutil.copyfileobj(file.file, buffer)
 
-  # 2. Determine next generated_room_id
-  # latest = db.query(func.max(GeneratedRoom.generated_room_id)).scalar()
-  # next_generated_room_id = 1 if latest is None else latest + 1 
-  # try:
-  #   latest_id_obj = db.query(GeneratedRoom.generated_room_id).filter(
-  #       GeneratedRoom.generated_room_id.like("R%")
-  #   ).order_by(desc(GeneratedRoom.id)).first()
-
-  #   if latest_id_obj and latest_id_obj[0].startswith("R"):
-  #       latest_number = int(re.sub("[^0-9]", "", latest_id_obj[0]))
-  #       next_generated_room_id = f"R{latest_number + 1}"
-  #   else:
-  #       next_generated_room_id = "R1"
-  # except Exception as e:
-  #   raise HTTPException(status_code=500, detail=f"Error generating ID: {str(e)}")
-  try: 
-    today_str = datetime.now().strftime("%y%m%d")
-    id_prefix = f"R-{today_str}"
-
-    latest_id_obj = db.query(GeneratedRoom.generated_room_id).filter(
-      GeneratedRoom.generated_room_id.like(f"{id_prefix}-%")
+  # Generate custom room ID
+  try:
+      today_str = datetime.now().strftime("%y%m%d")
+      id_prefix = f"R-{today_str}"
+      latest_id_obj = db.query(GeneratedRoom.generated_room_id).filter(
+          GeneratedRoom.generated_room_id.like(f"{id_prefix}-%")
       ).order_by(desc(GeneratedRoom.id)).first()
-    
-    if latest_id_obj: 
-      latest_number = int(latest_id_obj[0].split("-")[-1])
-      next_generated_room_id = f"{id_prefix}-{latest_number + 1:03d}"
-    else:
-      next_generated_room_id = f"{id_prefix}-001"
 
+      if latest_id_obj:
+          latest_number = int(latest_id_obj[0].split("-")[-1])
+          next_generated_room_id = f"{id_prefix}-{latest_number + 1:03d}"
+      else:
+          next_generated_room_id = f"{id_prefix}-001"
   except Exception as e:
-    raise HTTPException(status_code=500, detail=f"Error generating ID: {str(e)}")
-    
-  # 3. Create GeneratedRoom entry
-  design = GeneratedRoom(
-    original_image_path=file_path,
-    generated_image_path=file_path,
-    generated_room_id=next_generated_room_id,
-    room_style=room_style,
-    design_style=design_style
-  )
+      raise HTTPException(status_code=500, detail=f"Error generating ID: {str(e)}")
 
+  # Initial DB record
+  design = GeneratedRoom(
+      original_image_path=file_path,
+      generated_image_path="",
+      generated_room_id=next_generated_room_id,
+      room_style=room_style,
+      design_style=design_style
+  )
   db.add(design)
   db.commit()
   db.refresh(design)
 
-  # 4. Filter furniture based on room & style
-  furniture_list = db.query(Furniture).filter(
-  func.lower(Furniture.room) == design.room_style.lower(),
-  func.lower(Furniture.style) == design.design_style.lower()
-  ).all()
+  # Generate image with Stable Diffusion
+  try:
+      input_image = Image.open(file_path).convert("RGB")
+      if input_image.size != (512, 512):
+          input_image = input_image.resize((512, 512))
 
-  if not furniture_list:
-    raise HTTPException(status_code=404, detail="No matching furniture found")
+      prompt = f"Decorate this {room_style.lower()} with {design_style.lower()} furniture, clean, modern and aesthetic"
+      generated = pipe(
+          prompt=prompt,
+          image=input_image,
+          strength=0.75,
+          guidance_scale=7.5
+      ).images[0]
 
-  print("Furniture for AI:", [f.name for f in furniture_list])
+      # Save generated image
+      gen_filename = f"generated_{filename}"
+      dest = os.path.join(GENERATED_DIR, gen_filename)
+      generated.save(dest)
 
-  # 5. Simulate image generation by copying file 
-  src = design.original_image_path
-  if not os.path.exists(src):
-    raise HTTPException(status_code=400, detail="Original image not found")
+      # Update DB
+      design.generated_image_path = dest
+      design.generated_date = datetime.now(timezone.utc)
+      db.commit()
+      db.refresh(design)
 
-  gen_filename = f"generated_{os.path.basename(src)}"
-  dest = os.path.join(GENERATED_DIR, gen_filename)
-  shutil.copy(src, dest)
+      return design
 
-  # Update record
-  design.generated_image_path = dest
-  design.generated_date = datetime.now(timezone.utc)
-  db.commit()
-  db.refresh(design)
-
-  return design
+  except Exception as e:
+      raise HTTPException(status_code=500, detail=f"Image generation failed: {str(e)}")
 
 @router.get("/view/{folder}/{filename}")
 def view_image(folder: str, filename: str):
