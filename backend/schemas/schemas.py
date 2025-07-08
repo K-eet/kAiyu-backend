@@ -17,7 +17,7 @@ class FurnitureCreate(BaseModel):
   purchase_link: Optional[str] = None
 
   class Config:
-    orm_mode = True # Allows Pydantic to work with SQLAlchemy models directly
+    from_attributes = True # Allows Pydantic to work with SQLAlchemy models directly
 
 class FurnitureModel(FurnitureCreate):
   id: int
@@ -35,7 +35,7 @@ class GeneratedRoomModel(BaseModel):
   generated_date: Optional[datetime] = None
 
   class Config:
-    orm_mode = True # Allows Pydantic to work with SQLAlchemy models directly
+    from_attributes = True # Allows Pydantic to work with SQLAlchemy models directly
 
 
 # --- Pydantic Schemas for Furniture Coordinates ---
@@ -49,7 +49,7 @@ class FurnitureCoordinatesModel(BaseModel):
   y_coordinate: float
 
   class Config:
-    orm_mode = True # Allows Pydantic to work with SQLAlchemy models directly
+    from_attributes = True # Allows Pydantic to work with SQLAlchemy models directly
 
 class FurnitureCoordinateCreate(BaseModel):
   furniture_id: str
