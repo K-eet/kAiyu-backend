@@ -1,7 +1,7 @@
 import pandas as pd
 from sqlalchemy.orm import Session
 from backend.core.database import SessionLocal
-from backend.models.models import Furniture
+from backend.models.models import FurnitureDatabase
 
 def import_csv_to_furniture(csv_path: str):
   df = pd.read_csv(csv_path)
@@ -10,7 +10,7 @@ def import_csv_to_furniture(csv_path: str):
 
   for _, row in df.iterrows():
     try: 
-      furniture = Furniture(
+      furniture = FurnitureDatabase(
         furniture_id=row["furniture_id"],
         style=row["style"],
         room=row["room"],

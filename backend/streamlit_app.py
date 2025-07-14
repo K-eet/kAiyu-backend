@@ -2,8 +2,9 @@ import streamlit as st
 from streamlit_image_comparison import image_comparison
 import requests
 import os
+import cv2
 
-BACKEND_URL = "http://localhost:8000"
+BACKEND_URL = "http://localhost:8080"
 
 st.set_page_config(page_title="AI Interior Design App", layout="wide")
 
@@ -161,6 +162,23 @@ with tab3:
 
         original_url = f"{BACKEND_URL}/generated/view/uploads/{original_filename}"
         generated_url = f"{BACKEND_URL}/generated/view/generated/{generated_filename}"
+
+        # original_url = f"/generated/view/uploads/{original_filename}"
+        # generated_url = f"/generated/view/generated/{generated_filename}"
+
+        # st.text(original_url)
+
+        # original_image = cv2.imread(original_url)
+        # generated_image = cv2.imread(generated_url)
+
+        # st.image(original_image)
+
+        # new_width = 512
+        # new_height = 512
+
+        # original_image = cv2.resize(original_image, (new_width, new_height))
+        # generated_image = cv2.resize(generated_image, (new_width, new_height))
+
 
         st.subheader(f"🛋️ Room Style: {selected_room['room_style']} | 🎨 Design: {selected_room['design_style']}")
         image_comparison(

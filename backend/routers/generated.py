@@ -3,14 +3,14 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, desc
 from datetime import datetime, timezone
 from backend.core.database import get_db
-from backend.models.models import GeneratedRoom, Furniture
+from backend.models.models import GeneratedRoom, FurnitureDatabase
 from backend.schemas.schemas import GeneratedRoomModel
 import os, shutil, uuid, re
 from fastapi.responses import FileResponse
 from typing import List
 
 # Stable Diffusion
-from diffusers import StableDiffusionImg2ImgPipeline
+from diffusers import StableDiffusionImg2ImgPipeline, AutoPipelineForImage2Image
 import torch
 from PIL import Image
 from io import BytesIO
@@ -21,11 +21,17 @@ router = APIRouter(prefix="/generated", tags=["Generated Rooms"])
 
 # Load model once
 device = "cuda" if torch.cuda.is_available() else "cpu"
-pipe = StableDiffusionImg2ImgPipeline.from_pretrained(
-    "runwayml/stable-diffusion-v1-5",
-    torch_dtype=torch.float16 if device == "cuda" else torch.float32,
-    use_safetensors=True
-).to(device)
+# pipe = StableDiffusionImg2ImgPipeline.from_pretrained(
+#     "runwayml/stable-diffusion-v1-5",
+#     torch_dtype=torch.float16 if device == "cuda" else torch.float32,
+#     use_safetensors=True
+# ).to(device)
+pipe = AutoPipelineForImage2Image.from_pretrained(
+   "stabilityai/stable-diffusion-xl-refiner-1.0", 
+   torch_dtype=torch.float16 if device == "cuda" else torch.float32, 
+   variant="fp16", 
+   use_safetensors=True).to(device)
+
 
 @router.post("/generate-image/", response_model=GeneratedRoomModel)
 def upload_and_generate_image(
@@ -79,10 +85,13 @@ def upload_and_generate_image(
   # Generate image with Stable Diffusion
   try:
       input_image = Image.open(file_path).convert("RGB")
-      if input_image.size != (512, 512):
-          input_image = input_image.resize((512, 512))
+      if input_image.size != (1280, 720):
+          input_image = input_image.resize((1280, 720))
 
-      prompt = f"Decorate this {room_style.lower()} with {design_style.lower()} furniture, clean, modern and aesthetic"
+    # Prompt Version 2
+      prompt = f"""You are a helpful virtual staging assistant,Help decorate this {room_style.lower()} with {design_style.lower()} IKEA furniture, clean, soft natural light, aesthetic, realistic without changing or any features, dimensions, perspective and layout of the original room. DO NOT duplicate furniture. DO NOT generate in low quality, distorted, messy, dark, and cluttered.Your first priority would be furniture detection.
+      """
+
       generated = pipe(
           prompt=prompt,
           image=input_image,
@@ -111,8 +120,6 @@ def view_image(folder: str, filename: str):
   """
   This GET endpoint function is just to view the generated image. 
   """
-  # if folder not in ["uploads", "generated"]:
-  #     raise HTTPException(status_code=400, detail="Invalid folder")
 
   VALID_FOLDERS = {"uploads":  UPLOAD_DIR, "generated": GENERATED_DIR}
 
