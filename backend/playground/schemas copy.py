@@ -6,8 +6,7 @@ from datetime import datetime
 
 # Pydantic Schema: Represents the structure of a furniture item
 
-# --- Furniture Database (Renamed) --- 
-class FurnitureDatabaseCreate(BaseModel):
+class FurnitureCreate(BaseModel):
   furniture_id: Optional[str] = None
   style: Optional[str] = None
   room: Optional[str] = None
@@ -20,7 +19,7 @@ class FurnitureDatabaseCreate(BaseModel):
   class Config:
     from_attributes = True # Allows Pydantic to work with SQLAlchemy models directly
 
-class FurnitureDatabaseModel(FurnitureDatabaseCreate):
+class FurnitureModel(FurnitureCreate):
   id: int
 
 # --- Pydantic Schemas for Generated Rooms ---
@@ -48,7 +47,6 @@ class FurnitureCoordinatesModel(BaseModel):
   furniture_id: str
   x_coordinate: float
   y_coordinate: float
-  type: Optional[str] = None
 
   class Config:
     from_attributes = True # Allows Pydantic to work with SQLAlchemy models directly
@@ -57,7 +55,6 @@ class FurnitureCoordinateCreate(BaseModel):
   furniture_id: str
   x_coordinate: float
   y_coordinate: float
-  type: Optional[str] = None
 
 class FurnitureCoordinateBatchCreate(BaseModel):
   generated_room_id: str

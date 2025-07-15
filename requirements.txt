@@ -7,3 +7,11 @@ streamlit
 pillow
 requests
 python-multipart
+diffusers
+transformers
+accelerate 
+scipy
+safetensors
+ultralytics
+opencv-python-headless
+matplotlib

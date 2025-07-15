@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, desc
 from datetime import datetime, timezone
 from backend.core.database import get_db
-from backend.models.models import GeneratedRoom, FurnitureDatabase
+from backend.models.models import GeneratedRoom, Furniture
 from backend.schemas.schemas import GeneratedRoomModel
 import os, shutil, uuid, re
 from fastapi.responses import FileResponse
@@ -87,11 +87,16 @@ def upload_and_generate_image(
       input_image = Image.open(file_path).convert("RGB")
       if input_image.size != (1280, 720):
           input_image = input_image.resize((1280, 720))
+    # Prompt Version 1
+    #   prompt = f"Decorate this {room_style.lower()} with {design_style.lower()} furniture, clean, modern and aesthetic"
+    #   prompt = f"""Decorate this {room_style.lower()} with {design_style.lower()} IKEA furniture, clean, soft natural light, aesthetic, realistic. You must maintain the perspective, room layout and dimension. Keep in mind that the generated image should not be in low quality, distorted, messy, dark, messy and cluttered. If bedroom is chosen for room_style, keep the bed clean and sharp with the bedsheet. Your first priority would be furniture detection."""
 
     # Prompt Version 2
       prompt = f"""You are a helpful virtual staging assistant,Help decorate this {room_style.lower()} with {design_style.lower()} IKEA furniture, clean, soft natural light, aesthetic, realistic without changing or any features, dimensions, perspective and layout of the original room. DO NOT duplicate furniture. DO NOT generate in low quality, distorted, messy, dark, and cluttered.Your first priority would be furniture detection.
       """
-
+    # Prompt Version 3
+    #   prompt = f"""Decorate this {room_style.lower()} with {design_style.lower()} IKEA furniture, clean, soft natural light, aesthetic, realistic. I want a kid room with planets theme. If bedroom is chosen for room_style, keep the bed clean and sharp with the bedsheet tucked. Your first priority would be furniture detection."""
+ 
       generated = pipe(
           prompt=prompt,
           image=input_image,
@@ -120,6 +125,8 @@ def view_image(folder: str, filename: str):
   """
   This GET endpoint function is just to view the generated image. 
   """
+  # if folder not in ["uploads", "generated"]:
+  #     raise HTTPException(status_code=400, detail="Invalid folder")
 
   VALID_FOLDERS = {"uploads":  UPLOAD_DIR, "generated": GENERATED_DIR}
 

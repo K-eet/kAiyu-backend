@@ -2,7 +2,7 @@ from fastapi import FastAPI, APIRouter, Depends, HTTPException, Path
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 from backend.core.database import get_db
-from backend.models.models import FurnitureCoordinates, Furniture, GeneratedRoom
+from backend.models.models import FurnitureCoordinates, FurnitureDatabase, GeneratedRoom
 from backend.schemas.schemas import (
   FurnitureCoordinatesModel, 
   FurnitureCoordinateCreate, 
@@ -10,8 +10,7 @@ from backend.schemas.schemas import (
 from typing import List
 from random import uniform
 
-
-router = APIRouter(prefix="/generated", tags=["Furniture Coordinates"])
+router = APIRouter(prefix="/generated", tags=["FurnitureDatabase Coordinates"])
 
 @router.post("/coordinates/batch", response_model=List[FurnitureCoordinatesModel])
 def create_coordinates_batch(
@@ -34,10 +33,10 @@ def create_coordinates_batch(
 	created_coords = []
 
 	for coord in payload.coordinates:
-		# Validate Furniture ID
-		furniture = db.query(Furniture).filter_by(furniture_id=coord.furniture_id).first()
+		# Validate FurnitureDatabase ID
+		furniture = db.query(FurnitureDatabase).filter_by(furniture_id=coord.furniture_id).first()
 		if not furniture:
-			raise HTTPException(status_code=400, detail=f"Furniture ID '{coord.furniture_id}' does not exist.")
+			raise HTTPException(status_code=400, detail=f"FurnitureDatabase ID '{coord.furniture_id}' does not exist.")
 
 			# Validate Room and Style Compatibility
 		if furniture.room.lower() != generated_room.room_style.lower() or \
@@ -45,7 +44,7 @@ def create_coordinates_batch(
 			raise HTTPException(
 				status_code=400,
 				detail=(
-					f"Furniture '{coord.furniture_id}' has room/style ({furniture.room}, {furniture.style}) "
+					f"FurnitureDatabase '{coord.furniture_id}' has room/style ({furniture.room}, {furniture.style}) "
 					f"which does not match Generated Room ({generated_room.room_style}, {generated_room.design_style})."
 					)
 			)
@@ -87,146 +86,98 @@ def  get_coordinates(room_id: str, db: Session = Depends(get_db)):
 		raise HTTPException(status_code=404, detail="No coordinates found for this room")
 	return coords
 
+# @router.post("/coordinates/auto-generate", response_model=List[FurnitureCoordinatesModel])
+# def auto_generate_coordinates(
+# 		generated_room_id: str,
+# 		db: Session = Depends(get_db)
+# 	):
+# 		"""
+# 		Simulate AI model generating (x, y) furniture coordinates based on room type and style.
+# 		Automatically links matching furniture to the generated room.
+# 		"""
+# 		# Get the room details
+# 		room = db.query(GeneratedRoom).filter_by(generated_room_id=generated_room_id).first()
+# 		if not room:
+# 				raise HTTPException(status_code=404, detail="Generated room not found")
+
+# 		# Filter furniture for that room/style
+# 		furniture_items = db.query(FurnitureDatabase).filter(
+# 				func.lower(FurnitureDatabase.room) == room.room_style.lower(),
+# 				func.lower(FurnitureDatabase.style) == room.design_style.lower()
+# 		).all()
+
+# 		if not furniture_items:
+# 			raise HTTPException(status_code=404, detail="No matching furniture")
+
+# 		# Simulate AI (random x/y or predefined pattern)
+# 		import random
+
+# 		num_to_generate = random.randint(3, min(8, len(furniture_items)))
+# 		selected_furniture = random.sample(furniture_items, num_to_generate)
+
+# 		coordinates = []
+# 		for furniture in selected_furniture:
+# 			x = round(random.uniform(0.1, 0.9), 2)
+# 			y = round(random.uniform(0.1, 0.9), 2)
+
+# 			coord = FurnitureCoordinates(
+# 				generated_room_id=generated_room_id,
+# 				furniture_id=furniture.furniture_id,
+# 				x_coordinate=x,
+# 				y_coordinate=y
+# 			)
+# 			db.add(coord)
+# 			coordinates.append(coord)
+
+# 		db.commit()
+# 		return coordinates
+
 @router.post("/coordinates/auto-generate", response_model=List[FurnitureCoordinatesModel])
 def auto_generate_coordinates(
-		generated_room_id: str,
-		db: Session = Depends(get_db)
-	):
-		"""
-		Simulate AI model generating (x, y) furniture coordinates based on room type and style.
-		Automatically links matching furniture to the generated room.
-		"""
-		# Get the room details
-		room = db.query(GeneratedRoom).filter_by(generated_room_id=generated_room_id).first()
-		if not room:
-				raise HTTPException(status_code=404, detail="Generated room not found")
+    generated_room_id: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Simulate AI model generating (x, y) furniture coordinates based on room type and style.
+    Automatically links matching furniture type to the generated room.
+    """
+    # Example YOLO output types
+    detected_types = ["SOFA", "BED", "CHAIR", "COFFEE TABLE"]  # Simulated detection
 
-		# Filter furniture for that room/style
-		furniture_items = db.query(Furniture).filter(
-				func.lower(Furniture.room) == room.room_style.lower(),
-				func.lower(Furniture.style) == room.design_style.lower()
-		).all()
+    room = db.query(GeneratedRoom).filter_by(generated_room_id=generated_room_id).first()
+    if not room:
+        raise HTTPException(status_code=404, detail="Generated room not found")
 
-		if not furniture_items:
-			raise HTTPException(status_code=404, detail="No matching furniture")
+    coordinates = []
 
-		# Simulate AI (random x/y or predefined pattern)
-		import random
-		# coordinates = []
-		# for furniture in furniture_items:
-		# 	x = round(random.uniform(0.1, 0.9), 2)
-		# 	y = round(random.uniform(0.1, 0.9), 2)
-		# 	coord = FurnitureCoordinates(
-		# 			generated_room_id=generated_room_id,
-		# 			furniture_id=furniture.furniture_id,
-		# 			x_coordinate=x,
-		# 			y_coordinate=y
-		# 		)
-		# 	db.add(coord)
-		# 	coordinates.append(coord)
+    import random
 
-		# db.commit()
-		# return coordinates
+    for detected_type in detected_types:
+        # Find matching furniture item from database based on type
+        matching_furniture = db.query(FurnitureDatabase).filter(
+            func.lower(FurnitureDatabase.room) == room.room_style.lower(),
+            func.lower(FurnitureDatabase.style) == room.design_style.lower(),
+            func.lower(FurnitureDatabase.type) == detected_type.lower()
+        ).all()
 
-		num_to_generate = random.randint(3, min(8, len(furniture_items)))
-		selected_furniture = random.sample(furniture_items, num_to_generate)
+        if not matching_furniture:
+            # Skip if no match found
+            continue
 
-		coordinates = []
-		for furniture in selected_furniture:
-			x = round(random.uniform(0.1, 0.9), 2)
-			y = round(random.uniform(0.1, 0.9), 2)
+        selected_furniture = random.choice(matching_furniture)
 
-			coord = FurnitureCoordinates(
-				generated_room_id=generated_room_id,
-				furniture_id=furniture.furniture_id,
-				x_coordinate=x,
-				y_coordinate=y
-			)
-			db.add(coord)
-			coordinates.append(coord)
+        x = round(random.uniform(0.1, 0.9), 2)
+        y = round(random.uniform(0.1, 0.9), 2)
 
-		db.commit()
-		return coordinates
+        coord = FurnitureCoordinates(
+            generated_room_id=generated_room_id,
+            furniture_id=selected_furniture.furniture_id,
+            x_coordinate=x,
+            y_coordinate=y,
+            type=detected_type  # Assuming your model has added this column
+        )
+        db.add(coord)
+        coordinates.append(coord)
 
-# @router.post("/coordinates/batch", response_model=List[FurnitureCoordinatesModel])
-# def create_coordinates_batch(
-# 	payload: FurnitureCoordinateBatchCreate,
-# 	db: Session = Depends(get_db)
-# 	):
-# 	"""
-# 	Insert multiple furniture coordinate hotspots for a generated room.
-# 	Validation:
-# 	- Each furniture ID must exist in the database.
-# 	- Furniture's room & style must match the GeneratedRoom's room_style & design_style.
-# 	"""
-# 	created = []
-
-# 	generated_room = db.query(GeneratedRoom).filter_by(
-# 		generated_room_id=payload.generated_room_id
-# 		).first()
-
-# 	if not generated_room:
-# 		raise HTTPException(status_code=400, detail=f"Generated Room ID '{payload.generated_room_id}' not found.")
-
-# 	for coord in payload.coordinates:
-# 		furniture = db.query(Furniture).filter_by(furniture_id=coord.furniture_id).first()
-
-# 	if not furniture:
-# 		raise HTTPException(
-# 			status_code=400,
-# 			detail=f"Furniture ID '{coord.furniture_id}' does not exist."
-# 		)
-
-# 	if (furniture.room.lower() != generated_room.room_style.lower() or
-# 	furniture.style.lower() != generated_room.design_style.lower()):
-# 		raise HTTPException(
-# 			status_code=400,
-# 			detail=(
-# 			f"Furniture '{coord.furniture_id}' has room/style ({furniture.room}, {furniture.style}) "
-# 			f"which does not match Generated Room ({generated_room.room_style}, {generated_room.design_style})."
-# 		)
-# 	)
-
-# 	new_coord = FurnitureCoordinates(
-# 		generated_room_id=payload.generated_room_id,
-# 		furniture_id=coord.furniture_id,
-# 		x_coordinate=coord.x_coordinate,
-# 		y_coordinate=coord.y_coordinate
-# 	)
-# 	db.add(new_coord)
-# 	created.append(new_coord)
-
-# 	db.commit()
-# 	return created
-
-
-# @router.post("/coordinates/batch", response_model=List[FurnitureCoordinatesModel])
-# def create_coordinates_batch(
-#   payload: FurnitureCoordinateBatchCreate,
-#   db: Session = Depends(get_db)
-# ):
-#   """
-#   Insert multiple furniture coordinate hotspots for a specific generated room.
-
-#   Payload contains:
-#   - generated_room_id: The ID of the room the furniture belongs to
-#   - coordinates: List of (furniture_id, x, y) tuples
-
-#   Example use case:
-#   After AI generates a furnished image, it detects furniture positions and 
-#   sends all coordinates to this endpoint in a single batch insert.
-#   """
-#   created = []
-
-#   for coord in payload.coordinates:
-#     new_coord = FurnitureCoordinates(
-#       generated_room_id = payload.generated_room_id,
-#       furniture_id = coord.furniture_id,
-#       x_coordinate = coord.x_coordinate,
-#       y_coordinate = coord.y_coordinate
-#     )
-#     db.add(new_coord)
-#     created.append(new_coord)
-
-#   db.commit()
-#   return created
+    db.commit()
+    return coordinates

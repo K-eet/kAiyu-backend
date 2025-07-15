@@ -6,8 +6,8 @@ from datetime import datetime, timezone
 # --- SQLAlchemy Models (Database Table Definitions) ---
 
 # Furniture Model: Represents the 'furniture' table in your PostgreSQL database
-class FurnitureDatabase(Base):
-  __tablename__ = "furniture_database"
+class Furniture(Base):
+  __tablename__ = "furniture"
   id = Column(Integer, primary_key=True, autoincrement=True)
   furniture_id = Column(String, nullable=True, unique=True)
   style = Column(String, nullable=True)
@@ -20,7 +20,7 @@ class FurnitureDatabase(Base):
 
   # Relationships with FurnitureCoordinates
   # This establishes a one-to-many relationship where one piece of furniture can be associated with multiple 
-  furniture_coordinates = relationship("FurnitureCoordinates", back_populates="furniture_database",
+  furniture_coordinates = relationship("FurnitureCoordinates", back_populates="furniture",
                                  cascade="all, delete-orphan")
 
 
@@ -44,12 +44,11 @@ class GeneratedRoom(Base):
 class FurnitureCoordinates(Base):
   __tablename__ = "furniture_coordinates"
   id = Column(Integer, primary_key=True, autoincrement=True)
-  furniture_id = Column(String, ForeignKey("furniture_database.furniture_id"), nullable=False)
+  furniture_id = Column(String, ForeignKey("furniture.furniture_id"), nullable=False)
   generated_room_id = Column(String, ForeignKey("generated_rooms.generated_room_id"),nullable=False)
   x_coordinate = Column(Float, nullable=False)
   y_coordinate = Column(Float, nullable=False)
-  type = Column(String, nullable=True)
 
   # Foreign Key
-  furniture_database = relationship("FurnitureDatabase", back_populates="furniture_coordinates")
+  furniture = relationship("Furniture", back_populates="furniture_coordinates")
   generated_room = relationship("GeneratedRoom", back_populates="furniture_coordinates")
