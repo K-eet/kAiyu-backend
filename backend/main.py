@@ -1,8 +1,10 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from backend.core.database import Base, engine
+from backend.playground import to_endpoint
 from backend.routers import furniture, generated, coordinates
 from fastapi.middleware.cors import CORSMiddleware
+# from backend.routers import from_endpoint
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -22,6 +24,8 @@ app.add_middleware(
 app.include_router(furniture.router)
 app.include_router(generated.router)
 app.include_router(coordinates.router)
+# app.include_router(from_endpoint.router)
+# app.include_router(to_endpoint.router)
 
 @app.get("/")
 def read_root():

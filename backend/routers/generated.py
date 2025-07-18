@@ -8,6 +8,7 @@ from backend.schemas.schemas import GeneratedRoomModel
 import os, shutil, uuid, re
 from fastapi.responses import FileResponse
 from typing import List
+from backend.routers.coordinates import detect_furniture_coordinates
 
 # Stable Diffusion
 from diffusers import StableDiffusionImg2ImgPipeline, AutoPipelineForImage2Image
@@ -21,17 +22,12 @@ router = APIRouter(prefix="/generated", tags=["Generated Rooms"])
 
 # Load model once
 device = "cuda" if torch.cuda.is_available() else "cpu"
-# pipe = StableDiffusionImg2ImgPipeline.from_pretrained(
-#     "runwayml/stable-diffusion-v1-5",
-#     torch_dtype=torch.float16 if device == "cuda" else torch.float32,
-#     use_safetensors=True
-# ).to(device)
+
 pipe = AutoPipelineForImage2Image.from_pretrained(
    "stabilityai/stable-diffusion-xl-refiner-1.0", 
    torch_dtype=torch.float16 if device == "cuda" else torch.float32, 
    variant="fp16", 
    use_safetensors=True).to(device)
-
 
 @router.post("/generate-image/", response_model=GeneratedRoomModel)
 def upload_and_generate_image(
@@ -91,6 +87,8 @@ def upload_and_generate_image(
     # Prompt Version 2
       prompt = f"""You are a helpful virtual staging assistant,Help decorate this {room_style.lower()} with {design_style.lower()} IKEA furniture, clean, soft natural light, aesthetic, realistic without changing or any features, dimensions, perspective and layout of the original room. DO NOT duplicate furniture. DO NOT generate in low quality, distorted, messy, dark, and cluttered.Your first priority would be furniture detection.
       """
+
+    #   prompt = f"""You are an interior designer, decorate a living room for a family house while maintaing the room layout. Help decorate this {room_style.lower()} with {design_style.lower()} with a sofa, coffee table, bookcase curtains and cupboards. Please keep it minimalist. Use IKEA products."""
 
       generated = pipe(
           prompt=prompt,
