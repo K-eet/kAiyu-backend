@@ -8,6 +8,7 @@ from backend.schemas.schemas import GeneratedRoomModel
 import os, shutil, uuid, re
 from fastapi.responses import FileResponse
 from typing import List
+from backend.routers.coordinates import detect_furniture_coordinates
 
 # Stable Diffusion
 from diffusers import StableDiffusionImg2ImgPipeline, AutoPipelineForImage2Image
@@ -21,17 +22,12 @@ router = APIRouter(prefix="/generated", tags=["Generated Rooms"])
 
 # Load model once
 device = "cuda" if torch.cuda.is_available() else "cpu"
-# pipe = StableDiffusionImg2ImgPipeline.from_pretrained(
-#     "runwayml/stable-diffusion-v1-5",
-#     torch_dtype=torch.float16 if device == "cuda" else torch.float32,
-#     use_safetensors=True
-# ).to(device)
+
 pipe = AutoPipelineForImage2Image.from_pretrained(
    "stabilityai/stable-diffusion-xl-refiner-1.0", 
    torch_dtype=torch.float16 if device == "cuda" else torch.float32, 
    variant="fp16", 
    use_safetensors=True).to(device)
-
 
 @router.post("/generate-image/", response_model=GeneratedRoomModel)
 def upload_and_generate_image(
@@ -41,7 +37,25 @@ def upload_and_generate_image(
   db: Session = Depends(get_db)
   ):
   """
-  Upload image + room & design style -> filters furniture -> simulates image generation 
+  Upload an empty room image, generate a new furnished image using Stable Diffusion, 
+  and save both original and generated images with metadata to the database.
+
+  Workflow:
+  1. Validate the uploaded image format (jpg, jpeg, png).
+  2. Save the uploaded image locally to the 'uploads' directory.
+  3. Generate a unique `generated_room_id` (R-YYMMDD-###) for the room.
+  4. Create an initial database record for the uploaded image with room type and design style.
+  5. Process the uploaded image using the Stable Diffusion XL Refiner pipeline:
+     - Resize image to 1280x720 for consistency.
+     - Apply text-to-image prompt to generate a realistic, aesthetic furnished version.
+     - Save the generated image to the 'generated' directory.
+  6. Update the database with the generated image path and timestamp.
+  7. Return the updated database record as API response.
+
+  Raises:
+      400: Invalid file type.
+      404: Image file not found.
+      500: Database ID generation or image generation failure.
   """
   # Validate file
   ext = os.path.splitext(file.filename)[1].lower()
@@ -91,6 +105,8 @@ def upload_and_generate_image(
     # Prompt Version 2
       prompt = f"""You are a helpful virtual staging assistant,Help decorate this {room_style.lower()} with {design_style.lower()} IKEA furniture, clean, soft natural light, aesthetic, realistic without changing or any features, dimensions, perspective and layout of the original room. DO NOT duplicate furniture. DO NOT generate in low quality, distorted, messy, dark, and cluttered.Your first priority would be furniture detection.
       """
+
+    #   prompt = f"""You are an interior designer, decorate a living room for a family house while maintaing the room layout. Help decorate this {room_style.lower()} with {design_style.lower()} with a sofa, coffee table, bookcase curtains and cupboards. Please keep it minimalist. Use IKEA products."""
 
       generated = pipe(
           prompt=prompt,

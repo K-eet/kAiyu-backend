@@ -96,17 +96,25 @@ You can import furniture data using one of the following methods:
 
 #### ✅ Method 2: Using pgAdmin4 (Manual Import)
 1. Open pgAdmin4 and connect to your **furniture_db** database.
-2. Navigate to the appropriate table (e.g., furniture).
+2. Navigate to the appropriate table (e.g., furniture_database).
 3. Use the Import/Export feature to import data manually.
 4. Select the CSV file located at:
 **/database/furniture_table.csv**
 
 ### 🎈 8. Streamlit App (Optional Frontend)
-You can run a quick frontend interface using Streamlit
+You can launch a simple frontend interface using Streamlit to interact with the backend.
+#### 🚀 How to Run
 1. Open a new terminal window
-2. Run the following command: 
+2. Run the following command, replacing {version} with the current version number of the Streamlit app file:
+
 `
-streamlit run backend/app.py
+streamlit run backend/streamlit_app_v{version}.py
+`
+
+3. Example: 
+
+`
+streamlit run backend/streamlit_app_v3.py
 `
 
 ✅ This provides a simple interface for uploading room images, selecting filters, and previewing simulated AI-generated results.
