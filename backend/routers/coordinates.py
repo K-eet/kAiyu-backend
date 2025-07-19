@@ -16,6 +16,19 @@ router = APIRouter(prefix="/generated", tags=["FurnitureDatabase Coordinates"])
 model = YOLO("./backend/best_v6.pt")
 
 def detect_furniture_coordinates(image_path: str):
+  """
+  Detect furniture objects from the image using YOLOv11 model
+
+  Steps: 
+  1. Read the input image.
+  2. Run the object detection with YOLOv11.
+  3. For each detected object, caclulate its center coordinates (normalized 0-1).
+  4. Collect x, y coordinates and label (type) into a list.
+  5. Return the list of detected objects.
+
+  Returns: 
+    List of dicts: {"x": float, "y": float, "type": str}
+  """
   img = cv2.imread(image_path)
   h, w, _ = img.shape
   results = model(image_path, conf=0.2)
@@ -44,6 +57,22 @@ def detect_and_store_coordinates(
   generated_room_id: str, 
   db: Session = Depends(get_db)
 ):
+  """
+  Detect furniture coordinates in a generated room image and store them in the database.
+
+  Steps:
+  1. Validate that the given generated_room_id exists.
+  2. Load the stored generated room image from disk.
+  3. Detect furniture objects using YOLO model (calls detect_furniture_coordinates).
+  4. For each detected item:
+     - Match it to furniture in the database based on room type, style, and furniture type.
+     - Store the normalized x, y coordinates and link them to the generated room and furniture.
+  5. Commit all coordinates to the database.
+  6. Return the list of saved coordinates.
+  
+  Raises:
+      404 if room not found, image missing, or no furniture detected.
+  """
   room = db.query(GeneratedRoom).filter_by(generated_room_id=generated_room_id).first()
   if not room:
     raise HTTPException(status_code=404, detail="Generated room not found")
@@ -159,53 +188,3 @@ def  get_coordinates(room_id: str, db: Session = Depends(get_db)):
 	if not coords: 
 		raise HTTPException(status_code=404, detail="No coordinates found for this room")
 	return coords
-
-@router.post("/coordinates/auto-generate", response_model=List[FurnitureCoordinatesModel])
-def auto_generate_coordinates(
-    generated_room_id: str,
-    db: Session = Depends(get_db)
-):
-    """
-    Simulate AI model generating (x, y) furniture coordinates based on room type and style.
-    Automatically links matching furniture type to the generated room.
-    """
-    # Example YOLO output types
-    detected_types = ["SOFA", "BED", "CHAIR", "COFFEE TABLE"]  # Simulated detection
-
-    room = db.query(GeneratedRoom).filter_by(generated_room_id=generated_room_id).first()
-    if not room:
-        raise HTTPException(status_code=404, detail="Generated room not found")
-
-    coordinates = []
-
-    import random
-
-    for detected_type in detected_types:
-        # Find matching furniture item from database based on type
-        matching_furniture = db.query(FurnitureDatabase).filter(
-            func.lower(FurnitureDatabase.room) == room.room_style.lower(),
-            func.lower(FurnitureDatabase.style) == room.design_style.lower(),
-            func.lower(FurnitureDatabase.type) == detected_type.lower()
-        ).all()
-
-        if not matching_furniture:
-            # Skip if no match found
-            continue
-
-        selected_furniture = random.choice(matching_furniture)
-
-        x = round(random.uniform(0.1, 0.9), 2)
-        y = round(random.uniform(0.1, 0.9), 2)
-
-        coord = FurnitureCoordinates(
-            generated_room_id=generated_room_id,
-            furniture_id=selected_furniture.furniture_id,
-            x_coordinate=x,
-            y_coordinate=y,
-            type=detected_type  # Assuming your model has added this column
-        )
-        db.add(coord)
-        coordinates.append(coord)
-
-    db.commit()
-    return coordinates
