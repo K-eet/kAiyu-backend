@@ -103,10 +103,39 @@ def upload_and_generate_image(
           input_image = input_image.resize((1280, 720))
 
     # Prompt Version 2
-      prompt = f"""You are a helpful virtual staging assistant,Help decorate this {room_style.lower()} with {design_style.lower()} IKEA furniture, clean, soft natural light, aesthetic, realistic without changing or any features, dimensions, perspective and layout of the original room. DO NOT duplicate furniture. DO NOT generate in low quality, distorted, messy, dark, and cluttered.Your first priority would be furniture detection.
+      # prompt = f"""You are a helpful virtual staging assistant,Help decorate this {room_style.lower()} with {design_style.lower()} IKEA furniture, clean, soft natural light, aesthetic, realistic without changing or any features, dimensions, perspective and layout of the original room. DO NOT duplicate furniture. DO NOT generate in low quality, distorted, messy, dark, and cluttered.Your first priority would be furniture detection.
+      # """
+
+    # Prompt Version 6
+      prompt = f"""You are a highly skilled interior designer specializing in functional, modern spaces. Decorate a {room_style.lower()} with {design_style.lower()} style. The room has an existing layout that cannot be altered. Imagine a rectangular bedroom with a large, centered window on the main wall (facing the viewer). The window is a standard rectangular casement window, letting in ample natural light. All furniture and decor must strictly adhere to the IKEA aesthetic: clean lines, minimalist design, functional, light wood tones (like birch or light oak), neutral color palette (whites, light grays, muted blues/greens), and simple, practical textiles. No structural changes to the room or window. The room should feel serene, uncluttered, and highly functional, embodying a sense of calm and simplicity. The room should feel serene, uncluttered, and highly functional, embodying a sense of calm and simplicity.
       """
 
+    # Prompt Version 3
     #   prompt = f"""You are an interior designer, decorate a living room for a family house while maintaing the room layout. Help decorate this {room_style.lower()} with {design_style.lower()} with a sofa, coffee table, bookcase curtains and cupboards. Please keep it minimalist. Use IKEA products."""
+
+    # Prompt Version 4
+      # prompt = f"""You are a helpful virtual staging assistant,Help decorate this {room_style.lower()} with {design_style.lower()} IKEA furniture, clean, soft natural light, aesthetic, realistic without changing any features, dimensions, perspective and layout of the original room. Your first priority would be room design, furniture placement and furniture detection."""
+
+    # Prompt Version 5
+      # prompt = f"""Professional interior design photo of a {room_style.lower()} decorated with IKEA furniture. 
+      # Features: IKEA {design_style.lower()} furniture, clean design, soft natural lighting, 
+      # minimalist aesthetic, well-organized space, realistic furniture placement, 
+      # high-quality interior photography, architectural photography style.
+      # Maintain original room dimensions, walls, windows, and architectural features exactly as shown."""
+
+      # negative_prompt = """ugly, deformed, disfigured, poor quality, blurry, dark, cluttered, floating, unrealistic placement,
+      # messy, duplicate furniture, floating furniture, unrealistic proportions, 
+      # bad anatomy, distorted perspective, changed room layout, modified walls, 
+      # altered windows, different room structure, oversaturated, cartoon style, 
+      # low resolution, artifacts, noise"""
+
+      # generated = pipe(
+      #     prompt=prompt,
+      #     negative_prompt=negative_prompt,
+      #     image=input_image,
+      #     strength=0.75,
+      #     guidance_scale=10.5,
+      # ).images[0]
 
       generated = pipe(
           prompt=prompt,

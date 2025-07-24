@@ -16,3 +16,4 @@ backend/.env
 generated/
 uploads/
 temp/
+runs/

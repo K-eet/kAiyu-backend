@@ -13,7 +13,7 @@ from fastapi.responses import JSONResponse
 import os
 
 router = APIRouter(prefix="/generated", tags=["FurnitureDatabase Coordinates"])
-model = YOLO("./backend/best_v6.pt")
+model = YOLO("./backend/best_yolo12n_v1.pt")
 
 def detect_furniture_coordinates(image_path: str):
   """
