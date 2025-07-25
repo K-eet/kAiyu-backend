@@ -16,3 +16,11 @@ ultralytics
 opencv-python-headless
 matplotlib
 streamlit-image-comparison
+torch
+torchvision
+pandas
+scikit-learn
+requests
+Pillow
+opencv-python-headless
+ultralytics

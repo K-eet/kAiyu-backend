@@ -17,3 +17,8 @@ generated/
 uploads/
 temp/
 runs/
+
+# Playground and Sandbox Folders
+# backend/playground/
+# backend/sandbox
+# backend/sandbox_anis
