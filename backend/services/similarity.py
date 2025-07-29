@@ -64,6 +64,7 @@ class SimilarityService:
             'product_url': row['purchase_link'],
             'category': row['type'],
             'image_url': row['image_link'],
+            'price': row['price'],
             'image_embedding': embedding
           })
         except Exception as e:
@@ -112,6 +113,8 @@ class SimilarityService:
         "product_name": product_info['product_name'],
         "product_url": product_info['product_url'],
         "similarity_score": float(similarities[idx]),
+        "product_category": product_info['category'],
+        "price": product_info['price'],
         "image_url": product_info['image_url']
       })
     
