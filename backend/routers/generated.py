@@ -85,12 +85,16 @@ def upload_and_generate_image(
     if input_image.size != (1280, 720):
          input_image = input_image.resize((1280, 720))
 
-    prompt = f"""You are an interior designer. Decorate this {room_style.lower()} with {design_style.lower()} IKEA furniture, clean, soft natural light, aesthetic, realistic without changing or any features, dimensions, perspective and layout of the original room. DO NOT duplicate furniture. DO NOT generate in low quality, distorted, messy, dark, and cluttered. Your first priority would be furniture detection.
-    """
-    
+    # prompt = f"""You are an interior designer. Decorate this {room_style.lower()} with {design_style.lower()} IKEA furniture, clean, soft natural light, aesthetic, realistic without changing or any features, dimensions, perspective and layout of the original room. DO NOT duplicate furniture. DO NOT generate in low quality, distorted, messy, dark, and cluttered. Your first priority would be furniture detection. """
+
+    prompt = f"""You are an interior designer. Decorate this {room_style.lower()} with {design_style.lower()} IKEA furniture, clean, soft natural light, aesthetic, realistic without changing or any features, dimensions, perspective and layout of the original room. Your first priority would be furniture detection. """
+
+    negative_prompt = f"""low quality, distorted, messy, dark, and cluttered. duplicated furniture only for bed"""
+
     generated_image = pipe(
       prompt=prompt, image=input_image,
-      strength=0.75, guidance_scale=8.0
+      negative_prompt=negative_prompt,
+      strength=0.80, guidance_scale=8.0
     ).images[0]
 
     # Save the generated image
@@ -165,5 +169,5 @@ def view_image(folder: str, filename: str, response: Response):
 @router.get("/gallery", response_model=List[GeneratedRoomModel])
 def get_all_generated_rooms(db: Session = Depends(get_db)):
   """Gets all generated room records for the gallery view."""
-  rooms = db.query(GeneratedRoom).order_by(desc(GeneratedRoom.generated_date)).all()
+  rooms = db.query(GeneratedRoom).filter_by(status=1).order_by(desc(GeneratedRoom.generated_date)).all()
   return rooms

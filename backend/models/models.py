@@ -34,6 +34,7 @@ class GeneratedRoom(Base):
   room_style = Column(String, nullable=False)
   design_style = Column(String, nullable=False)
   generated_date = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+  status = Column(Integer, default=1)
 
   # Foreign Key
   furniture_coordinates = relationship("FurnitureCoordinates",
