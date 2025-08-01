@@ -8,7 +8,7 @@ from PIL import Image
 import io
 
 # --- CONFIGURATION ---
-BACKEND_URL = "http://localhost:8080" 
+BACKEND_URL = "http://localhost:8000" 
 st.set_page_config(page_title="AI Interior Design", layout="wide")
 
 # --- UI SETUP ---

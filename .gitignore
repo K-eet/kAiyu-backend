@@ -22,3 +22,6 @@ runs/
 # backend/playground/
 # backend/sandbox
 # backend/sandbox_anis
+
+# Vue/Vuetify application
+frontend/
